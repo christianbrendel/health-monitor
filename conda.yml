@@ -1,0 +1,15 @@
+name: health-monitor
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas
+  - plotly
+  - streamlit
+  - ipykernel
+  - python-dotenv
+  - psycopg2
+  - pip
+  - pip:
+      - supabase
