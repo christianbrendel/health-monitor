@@ -107,6 +107,17 @@ def _get_current_and_last_score(df_score):
     
     return score_current, ts_current, score_last, ts_last
 
+@st.cache_data
+def _get_current_deep_fast_state(df_deep_fast_sessions):
+    ts_now = pd.Timestamp.now(tz=TZ)
+    mask_current_deep_fast_session = (ts_now - df_deep_fast_sessions.ts_end) < pd.Timedelta(seconds=10)
+    e = df_deep_fast_sessions[mask_current_deep_fast_session]
+    if len(e) > 0:
+        hours = int(e.iloc[0].delta_in_hours)
+        minutes = int((e.iloc[0].delta_in_hours - hours) * 60)
+        return f"{hours}h {minutes}min", e.iloc[0].ts_start.strftime("%Y-%m-%d %H:%M %Z")
+    return "-", None
+
 
 def visualize_data(
     df_sleep_sessions_viz=None, 
@@ -315,30 +326,42 @@ def visualize_data(
 # Main
 # ----
     
-st.title("Sleep, Eat, Repeat")
+st.title("Eat-Sleep-Repeat")
+
+if st.button("Refresh Data", use_container_width=True):
+    st.cache_data.clear()
 
 ret = load_data()
 scores_current = _get_current_scores(ret["df_score"])
+df_tmp = ret["df_deep_fast_sessions"][["ts_start", "ts_end", "delta_in_hours"]].copy() # to make hashing for cashing work
+current_deep_fast_state = _get_current_deep_fast_state(df_tmp)
 
-
-
-c1, c2, _ = st.columns([1, 4, 5])
+c1, c2, c3, _ = st.columns([1, 4, 1.5, 3])
 with c1: 
     st.metric(label="Overall Score", value=f"{scores_current['score']:.1%}", border=True)
 with c2: 
-    k =["score_fasting", "score_first_meal", "score_last_meal", "score_sleep"]
-    n = ["Fasting", "First Meal", "Last Meal", "Sleep"]
-    v = [scores_current[k] for k in k]
-    c = st.columns(len(k))
-    for i, (k, v, n) in enumerate(zip(k, v, n)):
-        with c[i]:
-            st.metric(label=n, value=f"{v:.1%}", border=True)
-    
+    with st.container(border=True):
+        k =["score_fasting", "score_first_meal", "score_last_meal", "score_sleep"]
+        n = ["Fasting", "First Meal", "Last Meal", "Sleep"]
+        v = [scores_current[k] for k in k]
+        c = st.columns(len(k))
+        for i, (k, v, n) in enumerate(zip(k, v, n)):
+            with c[i]:
+                st.metric(label=n, value=f"{v:.1%}", border=False)
+
+with c3:     
+    dt, ts_start_str = current_deep_fast_state    
+    st.metric(label="Current Deep Fasting", value=dt, border=True, delta=ts_start_str, delta_color="off")
+
 fig = visualize_data(**ret)
 st.plotly_chart(fig)
 
-c1, _ = st.columns([1, 9])
-with c1:
-    if st.button("Refresh Data"):
-        st.cache_data.clear()
-        st.rerun()
+# c1, _ = st.columns([1, 9])
+# with c1:
+#     if st.button("Refresh Data"):
+#         st.cache_data.clear()
+#         st.rerun()
+
+
+
+
