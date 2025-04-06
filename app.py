@@ -11,6 +11,20 @@ load_dotenv()
 # ----------
 
 st.set_page_config(layout="wide")
+# st.set_page_config(layout="wide", initial_sidebar_state="expanded")
+st.markdown("""
+    <style>
+        .stApp {
+            background-color: #0e1117;
+            color: #fafafa;
+        }
+        .stMarkdown, .stDataFrame {
+            color: #fafafa;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
 
 TZ = 'Europe/Berlin' # 'America/Los_Angeles'
 TARGET_DELTA_FASTING = 4
@@ -241,15 +255,6 @@ def visualize_data(
     )
 
 
-    # Layout
-    fig.update_layout(
-        barmode='overlay',
-        template='plotly_dark',
-        bargap=0.05,
-        width=1000,
-        height=1000,
-    )
-
     fig.update_xaxes(showline=True, mirror=True, showgrid=True, range=[pd.Timestamp('2024-10-15'), pd.Timestamp.now()])
 
     fig.update_yaxes(showline=True, mirror=True, showgrid=False, range=[0, 24], row=1, col=1)
@@ -297,7 +302,24 @@ def visualize_data(
     )
     
     fig.update_layout(
-        margin=dict(l=0, r=0, t=10, b=10)
+        margin=dict(l=0, r=10, t=10, b=10),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.05,
+            xanchor="left",
+            x=0.0
+        )
+    )
+    
+     # Layout
+    fig.update_layout(
+        barmode='overlay',
+        template='plotly_dark',
+        bargap=0.05,
+        width=1000,
+        height=1000,
     )
 
     return fig
@@ -327,3 +349,9 @@ with c2:
     
 fig = visualize_data(**ret)
 st.plotly_chart(fig)
+
+c1, _ = st.columns([1, 9])
+with c1:
+    if st.button("Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
