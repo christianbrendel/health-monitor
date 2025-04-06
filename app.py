@@ -11,19 +11,6 @@ load_dotenv()
 # ----------
 
 st.set_page_config(layout="wide")
-# st.set_page_config(layout="wide", initial_sidebar_state="expanded")
-st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0e1117;
-            color: #fafafa;
-        }
-        .stMarkdown, .stDataFrame {
-            color: #fafafa;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 
 
 TZ = 'Europe/Berlin' # 'America/Los_Angeles'
