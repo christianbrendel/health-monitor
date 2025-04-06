@@ -1,0 +1,9 @@
+python==3.9
+numpy
+pandas
+plotly
+streamlit
+ipykernel
+python-dotenv
+psycopg2
+supabase
