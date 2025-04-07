@@ -112,11 +112,12 @@ def _get_current_deep_fast_state(df_deep_fast_sessions):
     ts_now = pd.Timestamp.now(tz=TZ)
     mask_current_deep_fast_session = (ts_now - df_deep_fast_sessions.ts_end) < pd.Timedelta(seconds=10)
     e = df_deep_fast_sessions[mask_current_deep_fast_session]
+    ts_now_str = ts_now.strftime("%Y-%m-%d %H:%M %Z")
     if len(e) > 0:
         hours = int(e.iloc[0].delta_in_hours)
         minutes = int((e.iloc[0].delta_in_hours - hours) * 60)
-        return f"{hours}h {minutes}min", e.iloc[0].ts_start.strftime("%Y-%m-%d %H:%M %Z")
-    return "-", None
+        return ts_now_str, f"{hours}h {minutes}min", e.iloc[0].ts_start.strftime("%Y-%m-%d %H:%M %Z")
+    return ts_now_str, "-", None
 
 
 def visualize_data(
@@ -343,11 +344,11 @@ if st.button("Refresh Data", use_container_width=True):
 ret = load_data()
 scores_current = _get_current_scores(ret["df_score"])
 df_tmp = ret["df_deep_fast_sessions"][["ts_start", "ts_end", "delta_in_hours"]].copy() # to make hashing for cashing work
-current_deep_fast_state = _get_current_deep_fast_state(df_tmp)
-
+ts_now_str, dt, ts_start_str = _get_current_deep_fast_state(df_tmp)
+ 
 c1, c2, c3, _ = st.columns([1, 4, 1.5, 3])
 with c1: 
-    st.metric(label="Overall Score", value=f"{scores_current['score']:.1%}", border=True)
+    st.metric(label=f"Overall Score", value=f"{scores_current['score']:.1%}", border=True, delta=f"updated at {ts_now_str}", delta_color="off")
 with c2: 
     with st.container(border=True):
         k =["score_fasting", "score_first_meal", "score_last_meal", "score_sleep"]
@@ -359,8 +360,8 @@ with c2:
                 st.metric(label=n, value=f"{v:.1%}", border=False)
 
 with c3:     
-    dt, ts_start_str = current_deep_fast_state    
-    st.metric(label="Current Deep Fasting", value=dt, border=True, delta=ts_start_str, delta_color="off")
+       
+    st.metric(label="Current Deep Fasting", value=dt, border=True, delta=f"deep fast since: {ts_start_str}", delta_color="off")
 
 fig = visualize_data(**ret)
 config = {
