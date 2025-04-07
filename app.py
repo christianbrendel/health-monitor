@@ -253,13 +253,19 @@ def visualize_data(
     )
 
 
+    # Disable zooming
+    fig.update_yaxes(fixedrange=True)
     fig.update_xaxes(showline=True, mirror=True, showgrid=True, range=[pd.Timestamp('2024-10-15'), pd.Timestamp.now()])
-
-    fig.update_yaxes(showline=True, mirror=True, showgrid=False, range=[0, 24], row=1, col=1)
+    fig.update_yaxes(showline=True, mirror=True, showgrid=False, range=[0, 24], row=1, col=1)   
     for row in [2,3,4]:
         fig.update_yaxes(showline=True, mirror=True, showgrid=False, range=[0, 8], row=row, col=1)
     fig.update_yaxes(showline=True, mirror=True, showgrid=False, range=[4, 10], row=5, col=1)
     fig.update_yaxes(showline=True, mirror=True, showgrid=True, range=[0, 1], tickformat=',.0%', row=6, col=1)
+
+    fig.update_yaxes(
+        automargin=False     # prevents extra margin adjustments, because of e.g. yticklabels
+    )
+    
 
     # Example for adding annotations to each subplot using the layout annotations list
     fig.update_layout(
@@ -300,7 +306,7 @@ def visualize_data(
     )
     
     fig.update_layout(
-        margin=dict(l=0, r=10, t=10, b=10),
+        margin=dict(l=40, r=40, t=40, b=10),
         showlegend=True,
         legend=dict(
             orientation="h",
@@ -319,7 +325,10 @@ def visualize_data(
         width=1000,
         height=1000,
     )
-
+    
+    # Set default drag mode to pan
+    fig.update_layout(dragmode='pan')
+    
     return fig
     
 
@@ -354,13 +363,12 @@ with c3:
     st.metric(label="Current Deep Fasting", value=dt, border=True, delta=ts_start_str, delta_color="off")
 
 fig = visualize_data(**ret)
-st.plotly_chart(fig)
-
-# c1, _ = st.columns([1, 9])
-# with c1:
-#     if st.button("Refresh Data"):
-#         st.cache_data.clear()
-#         st.rerun()
+config = {
+    'modeBarButtons': [['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d']],  # Only include "move", "+" and "-" tools
+    'displaylogo': False,
+    'modeBarPosition': 'top'  # Attempts to position the modebar above the plot (may depend on your Plotly version)
+}
+st.plotly_chart(fig, config=config)
 
 
 
