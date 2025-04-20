@@ -25,7 +25,7 @@ MIN_GAP_BETWEEN_SESSIONS_IN_MINUTES = DT_DEEP_FAST_IN_HOURS*60
 # ---------
 
 @st.cache_data
-def load_data():
+def load_data(rolling_window_days):
 
     # load sleep data
     df_sleep = h.load_sleep_data_from_supabase()
@@ -61,6 +61,7 @@ def load_data():
         target_delta_first_meal = TARGET_DELTA_FIRST_MEAL,
         target_delta_last_meal = TARGET_DELTA_LAST_MEAL,
         target_delta_sleep = TARGET_DELTA_SLEEP,
+        rolling_window_days=rolling_window_days
     )
 
     return {
@@ -223,6 +224,11 @@ def visualize_data(
             row=row, col=1
         )
 
+    # Add max and min score lines
+    max_score = df_score.score.max()
+    min_score = df_score.score.min()
+    
+    # Add the score line first
     fig.add_scatter(
         x=df_score.date,
         y=df_score.score,
@@ -231,6 +237,37 @@ def visualize_data(
         opacity=1,
         marker_color="red",
         row=6, col=1
+    )
+
+    # Then add the max and min lines on top
+    fig.add_hline(
+        y=max_score,
+        line_dash="dot",
+        line_color="red",
+        line_width=0.5,
+        row=6, col=1,
+        annotation=dict(
+            text=f"Max: {max_score:.1%}",
+            font=dict(color="red"),
+            yshift=0,
+            xanchor="right",
+            yanchor="bottom"
+        )
+    )
+    
+    fig.add_hline(
+        y=min_score,
+        line_dash="dot",
+        line_color="red",
+        line_width=0.5,
+        row=6, col=1,
+        annotation=dict(
+            text=f"Min: {min_score:.1%}",
+            font=dict(color="red"),
+            yshift=0,
+            xanchor="right",
+            yanchor="top"
+        )
     )
 
     score_current, ts_current, score_last, ts_last = _get_current_and_last_score(df_score)
@@ -341,7 +378,7 @@ st.title("Eat-Sleep-Repeat")
 if st.button("Refresh Data", use_container_width=True):
     st.cache_data.clear()
 
-ret = load_data()
+ret = load_data(rolling_window_days=7)
 scores_current = _get_current_scores(ret["df_score"])
 df_tmp = ret["df_deep_fast_sessions"][["ts_start", "ts_end", "delta_in_hours"]].copy() # to make hashing for cashing work
 ts_now_str, dt, ts_start_str = _get_current_deep_fast_state(df_tmp)

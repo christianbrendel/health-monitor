@@ -223,6 +223,7 @@ def calculate_score(
     target_delta_first_meal = 1,
     target_delta_last_meal = 3,
     target_delta_sleep = 7,
+    rolling_window_days = 7,
 ):
     dfs = []
 
@@ -232,7 +233,7 @@ def calculate_score(
         [df_deep_fast_viz, df_first_meal_viz, df_last_meal_viz, df_sleep_duration_viz]
     ):
         df_tmp = df[["date", "delta_in_hours"]].copy()
-        df_tmp[f"score_{name}"] = (df_tmp.delta_in_hours > target).astype(int).rolling(7).mean()
+        df_tmp[f"score_{name}"] = (df_tmp.delta_in_hours > target).astype(int).rolling(rolling_window_days).mean()
         df_tmp = df_tmp.drop(columns=["delta_in_hours"])
         dfs.append(df_tmp)
 
