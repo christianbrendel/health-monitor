@@ -120,6 +120,35 @@ def _get_current_deep_fast_state(df_deep_fast_sessions):
         return ts_now_str, f"{hours}h {minutes}min", e.iloc[0].ts_start.strftime("%Y-%m-%d %H:%M %Z")
     return ts_now_str, "-", None
 
+def _get_current_fasting_duration(df_eat):
+    ts_now = pd.Timestamp.now(tz=TZ)
+    ts_last_meal = df_eat.ts_end.max()
+    
+    # fasting
+    ts_now_str = ts_now.strftime("%Y-%m-%d %H:%M %Z")
+    ts_last_meal_str = ts_last_meal.strftime("%Y-%m-%d %H:%M %Z")
+    dt = ts_now - ts_last_meal
+    hours = int(dt.total_seconds() / 3600)
+    minutes = int((dt.total_seconds() % 3600) / 60)
+    fasting_str = f"{hours}h {minutes}min"
+    
+    # deep fasting
+    if hours >= DT_DEEP_FAST_IN_HOURS:
+        hours_deep_fasting = hours - DT_DEEP_FAST_IN_HOURS
+        minutes_deep_fasting = minutes - int((DT_DEEP_FAST_IN_HOURS - hours) * 60)
+        deep_fasting_str = f"{hours_deep_fasting}h {minutes_deep_fasting}min"
+    else:
+        deep_fasting_str = "-"
+    
+    return ts_now_str, ts_last_meal_str, fasting_str, deep_fasting_str
+    
+    
+    
+    
+    
+    
+
+
 
 def visualize_data(
     df_sleep_sessions_viz=None, 
@@ -380,8 +409,7 @@ if st.button("Refresh Data", use_container_width=True):
 
 ret = load_data(rolling_window_days=7)
 scores_current = _get_current_scores(ret["df_score"])
-df_tmp = ret["df_deep_fast_sessions"][["ts_start", "ts_end", "delta_in_hours"]].copy() # to make hashing for cashing work
-ts_now_str, dt, ts_start_str = _get_current_deep_fast_state(df_tmp)
+ts_now_str, ts_last_meal_str, fasting_str, deep_fasting_str = _get_current_fasting_duration(ret["df_eat"])
  
 c1, c2, c3, _ = st.columns([1, 4, 1.5, 3])
 with c1: 
@@ -397,8 +425,7 @@ with c2:
                 st.metric(label=n, value=f"{v:.1%}", border=False)
 
 with c3:     
-       
-    st.metric(label="Current Deep Fasting", value=dt, border=True, delta=f"deep fast since: {ts_start_str}", delta_color="off")
+    st.metric(label="Current Fasting", value=fasting_str, border=True, delta=f"deep fast duration: {deep_fasting_str}", delta_color="off")
 
 fig = visualize_data(**ret)
 config = {
