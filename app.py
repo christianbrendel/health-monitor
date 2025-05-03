@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 import helper as h 
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -14,18 +15,40 @@ st.set_page_config(layout="wide")
 
 
 TZ = 'Europe/Berlin' # 'America/Los_Angeles'
-TARGET_DELTA_FASTING = 4
-TARGET_DELTA_FIRST_MEAL = 1
-TARGET_DELTA_LAST_MEAL = 3
-TARGET_DELTA_SLEEP = 7
+TARGET_DELTA_FASTING = (3,4)
+TARGET_DELTA_FIRST_MEAL = (1,1)
+TARGET_DELTA_LAST_MEAL = (2,3)
+TARGET_DELTA_SLEEP = (6.5, 7) 
 DT_DEEP_FAST_IN_HOURS = 12 # this is the time after which the deep fasting state starts
 MIN_GAP_BETWEEN_SESSIONS_IN_MINUTES = DT_DEEP_FAST_IN_HOURS*60
+ROLLING_WINDOW_DAYS = 14
+GAMMA = 0.9
 
 # Functions
 # ---------
 
-@st.cache_data
-def load_data(rolling_window_days):
+# @st.cache_data
+def load_data():
+    
+    import pickle
+    with open("dev_data.pkl", "rb") as f:
+        st.warning("Dev Data is used...")
+        ret = pickle.load(f)
+    
+    ret["df_score"] = h.calculate_score(
+        ret["df_deep_fast_viz"], 
+        ret["df_first_meal_viz"], 
+        ret["df_last_meal_viz"], 
+        ret["df_sleep_duration_viz"],
+        target_delta_fasting = TARGET_DELTA_FASTING,
+        target_delta_first_meal = TARGET_DELTA_FIRST_MEAL,
+        target_delta_last_meal = TARGET_DELTA_LAST_MEAL,
+        target_delta_sleep = TARGET_DELTA_SLEEP,
+        rolling_window_days=ROLLING_WINDOW_DAYS,
+        gamma=GAMMA
+    )
+    
+    return ret
 
     # load sleep data
     df_sleep = h.load_sleep_data_from_supabase()
@@ -121,35 +144,27 @@ def _get_current_deep_fast_state(df_deep_fast_sessions):
     return ts_now_str, "-", None
 
 def _get_current_fasting_duration(df_eat):
+    
+    def _dt2str(dt):
+        if dt.total_seconds() < 0:
+            return "-"
+        hours = int(dt.total_seconds() / 3600)
+        minutes = int((dt.total_seconds() % 3600) / 60)
+        return f"{hours}h {minutes}min"
+    
     ts_now = pd.Timestamp.now(tz=TZ)
     ts_last_meal = df_eat.ts_end.max()
     
     # fasting
     ts_now_str = ts_now.strftime("%Y-%m-%d %H:%M %Z")
     ts_last_meal_str = ts_last_meal.strftime("%Y-%m-%d %H:%M %Z")
-    dt = ts_now - ts_last_meal
-    hours = int(dt.total_seconds() / 3600)
-    minutes = int((dt.total_seconds() % 3600) / 60)
-    fasting_str = f"{hours}h {minutes}min"
     
-    # deep fasting
-    if hours >= DT_DEEP_FAST_IN_HOURS:
-        hours_deep_fasting = hours - DT_DEEP_FAST_IN_HOURS
-        minutes_deep_fasting = minutes - int((DT_DEEP_FAST_IN_HOURS - hours) * 60)
-        deep_fasting_str = f"{hours_deep_fasting}h {minutes_deep_fasting}min"
-    else:
-        deep_fasting_str = "-"
+    fasting_str = _dt2str(ts_now - ts_last_meal)
+    deep_fasting_str = _dt2str(ts_now - ts_last_meal - timedelta(hours=DT_DEEP_FAST_IN_HOURS))
     
     return ts_now_str, ts_last_meal_str, fasting_str, deep_fasting_str
     
     
-    
-    
-    
-    
-
-
-
 def visualize_data(
     df_sleep_sessions_viz=None, 
     df_eat_viz=None, 
@@ -164,6 +179,52 @@ def visualize_data(
 ):
     
     fig = make_subplots(rows=6, cols=1, shared_xaxes=True, vertical_spacing=0.025)
+
+    # Adding annotations to each subplot using the layout annotations list
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="Deep Fast",
+                x=0, y=1,
+                xref="x2 domain",
+                yref="y2 domain",
+                showarrow=False,
+                font=dict(color="aqua", size=12)
+            ),
+            dict(
+                text="First Meal After Sleep",
+                x=0, y=1,
+                xref="x3 domain", 
+                yref="y3 domain",
+                showarrow=False,
+                font=dict(color="orange", size=12)
+            ),
+            dict(
+                text="Last Meal Before Sleep",
+                x=0, y=1,
+                xref="x4 domain",
+                yref="y4 domain",
+                showarrow=False,
+                font=dict(color="yellow", size=12)
+            ),
+            dict(
+                text="Sleep Duration",
+                x=0, y=1,
+                xref="x5 domain",
+                yref="y5 domain",
+                showarrow=False,
+                font=dict(color="white", size=12)
+            ),
+            dict(
+                text="Score",
+                x=0, y=1,
+                xref="x6 domain",
+                yref="y6 domain",
+                showarrow=False,
+                font=dict(color="red", size=12)
+            ),
+        ]
+    )
 
     # Sleep sessions
     fig.add_bar(x=pd.to_datetime(df_sleep_sessions_viz.date),
@@ -241,17 +302,20 @@ def visualize_data(
             row=row, col=1
         )
         
-        
-        
-
+    # Add target lines
     for y, row in zip([TARGET_DELTA_FASTING, TARGET_DELTA_FIRST_MEAL, TARGET_DELTA_LAST_MEAL, TARGET_DELTA_SLEEP], [2, 3, 4, 5]):
-        fig.add_hline(
-            y=y,
-            line_dash="dot",
-            line_color="white",
-            line_width=1,
-            row=row, col=1
-        )
+        
+        if not isinstance(y, tuple):
+            y = [y]
+        
+        for _y in y:
+            fig.add_hline(
+                y=_y,
+                line_dash="dot",
+                line_color="white",
+                line_width=1,
+                row=row, col=1
+            )
 
     # Add max and min score lines
     max_score = df_score.score.max()
@@ -266,6 +330,14 @@ def visualize_data(
         opacity=1,
         marker_color="red",
         row=6, col=1
+    )
+    
+    fig.add_hline(
+        y=0.80,
+        line_dash="dot",
+        line_color="white",
+        line_width=0.5,
+        row=6, col=1,
     )
 
     # Then add the max and min lines on top
@@ -298,7 +370,7 @@ def visualize_data(
             yanchor="top"
         )
     )
-
+    
     score_current, ts_current, score_last, ts_last = _get_current_and_last_score(df_score)
 
     fig.add_scatter(
@@ -334,43 +406,7 @@ def visualize_data(
     )
     
 
-    # Example for adding annotations to each subplot using the layout annotations list
-    fig.update_layout(
-        annotations=[
-            dict(
-                text="Deep Fast",
-                x=0, y=1,
-                xref="x2 domain",
-                yref="y2 domain",
-                showarrow=False,
-                font=dict(color="aqua", size=12)
-            ),
-            dict(
-                text="First Meal After Sleep",
-                x=0, y=1,
-                xref="x3 domain", 
-                yref="y3 domain",
-                showarrow=False,
-                font=dict(color="orange", size=12)
-            ),
-            dict(
-                text="Last Meal Before Sleep",
-                x=0, y=1,
-                xref="x4 domain",
-                yref="y4 domain",
-                showarrow=False,
-                font=dict(color="yellow", size=12)
-            ),
-            dict(
-                text="Sleep Duration",
-                x=0, y=1,
-                xref="x5 domain",
-                yref="y5 domain",
-                showarrow=False,
-                font=dict(color="white", size=12)
-            ),
-        ]
-    )
+    
     
     fig.update_layout(
         margin=dict(l=40, r=40, t=40, b=10),
@@ -407,33 +443,43 @@ st.title("Eat-Sleep-Repeat")
 if st.button("Refresh Data", use_container_width=True):
     st.cache_data.clear()
 
-ret = load_data(rolling_window_days=7)
+
+t1, t2 = st.tabs(["Metrics", "Graph"])
+with t1:
+    c_overall_score, c_fasting = st.columns([1, 1])
+    c_individual_scores = st.container(border=True)
+with t2:
+    c_figure = st.container(border=False)
+
+
+ret = load_data()
 scores_current = _get_current_scores(ret["df_score"])
 ts_now_str, ts_last_meal_str, fasting_str, deep_fasting_str = _get_current_fasting_duration(ret["df_eat"])
  
-c1, c2, c3, _ = st.columns([1, 4, 1.5, 3])
-with c1: 
+with c_overall_score: 
     st.metric(label=f"Overall Score", value=f"{scores_current['score']:.1%}", border=True, delta=f"updated at {ts_now_str}", delta_color="off")
-with c2: 
-    with st.container(border=True):
-        k =["score_fasting", "score_first_meal", "score_last_meal", "score_sleep"]
-        n = ["Fasting", "First Meal", "Last Meal", "Sleep"]
-        v = [scores_current[k] for k in k]
-        c = st.columns(len(k))
-        for i, (k, v, n) in enumerate(zip(k, v, n)):
-            with c[i]:
-                st.metric(label=n, value=f"{v:.1%}", border=False)
 
-with c3:     
-    st.metric(label="Current Fasting", value=fasting_str, border=True, delta=f"deep fast duration: {deep_fasting_str}", delta_color="off")
+with c_fasting:     
+    st.metric(label="Current Fasting Time", value=fasting_str, border=True, delta=f"deep fast duration: {deep_fasting_str}", delta_color="off")
 
-fig = visualize_data(**ret)
-config = {
-    'modeBarButtons': [['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d']],  # Only include "move", "+" and "-" tools
-    'displaylogo': False,
-    'modeBarPosition': 'top'  # Attempts to position the modebar above the plot (may depend on your Plotly version)
-}
-st.plotly_chart(fig, config=config)
+with c_individual_scores: 
+    k =["score_fasting", "score_first_meal", "score_last_meal", "score_sleep"]
+    n = ["Fasting", "First Meal", "Last Meal", "Sleep"]
+    v = [scores_current[k] for k in k]
+    c = st.columns(len(k))
+    for i, (k, v, n) in enumerate(zip(k, v, n)):
+        with c[i]:
+            st.metric(label=n, value=f"{v:.0%}", border=False)
+
+
+with c_figure:
+    fig = visualize_data(**ret)
+    config = {
+        'modeBarButtons': [['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d']],  # Only include "move", "+" and "-" tools
+        'displaylogo': False,
+        'modeBarPosition': 'top'  # Attempts to position the modebar above the plot (may depend on your Plotly version)
+    }
+    st.plotly_chart(fig, config=config)
 
 
 

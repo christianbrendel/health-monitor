@@ -224,17 +224,55 @@ def calculate_score(
     target_delta_last_meal = 3,
     target_delta_sleep = 7,
     rolling_window_days = 7,
+    gamma = 1,
 ):
-    dfs = []
+    """Calculate the overall score.
+    
+    Each target can be a tuple (min_target, max_target), in which the the score 
+    for this day is interpolated between 0 and 1. In case the target is just a
+    single number a simple threshold is used to determine of the score of the
+    day os either 0 or 1. 
+    
+    `rolling_window_days` and the decay factor `gamma` can be used to determine
+    the score of the current based on the history. 
 
+    Args:
+        df_deep_fast_viz (pd.DataFrame): Returned by `load_data`.
+        df_first_meal_viz (pd.DataFrame): Returned by `load_data`.
+        df_last_meal_viz (pd.DataFrame): Returned by `load_data`.
+        df_sleep_duration_viz (pd.DataFrame): Returned by `load_data`.
+        target_delta_fasting (int, optional): Fasting target. Defaults to 4.
+        target_delta_first_meal (int, optional): First meal target. Defaults to 1.
+        target_delta_last_meal (int, optional): Last meal target. Defaults to 3.
+        target_delta_sleep (int, optional): Sleep target. Defaults to 7.
+        rolling_window_days (int, optional): History taking into accound. Defaults to 7.
+        gamma (int, optional): Decay factor. Defaults to 1.
+    """
+    
+    def _scoring(x, gamma=1):
+        weights = gamma ** np.arange(len(x))
+        return (x * weights).sum() / weights.sum()
+    
+    dfs = []
+    
     for name, target, df in zip(
         ["fasting", "first_meal", "last_meal", "sleep"],
         [target_delta_fasting, target_delta_first_meal, target_delta_last_meal, target_delta_sleep],
         [df_deep_fast_viz, df_first_meal_viz, df_last_meal_viz, df_sleep_duration_viz]
     ):
+        # if only a single number is given set the target accordingly
+        if not isinstance(target, tuple):
+            target = (target, target)
+        
         df_tmp = df[["date", "delta_in_hours"]].copy()
-        df_tmp[f"score_{name}"] = (df_tmp.delta_in_hours > target).astype(int).rolling(rolling_window_days).mean()
-        df_tmp = df_tmp.drop(columns=["delta_in_hours"])
+        
+        # calculate the individual score for each day
+        df_tmp[f"_score_{name}"] = ((df_tmp.delta_in_hours - min(target)) / (max(target) - min(target))).clip(0,1)
+        
+        # calculate the score based on last rolling_window_days taking the decay of gamma into account
+        df_tmp[f"score_{name}"] = df_tmp[f"_score_{name}"].rolling(rolling_window_days).apply(lambda x: _scoring(x, gamma=gamma))
+          
+        df_tmp = df_tmp.drop(columns=["delta_in_hours", f"_score_{name}"])
         dfs.append(df_tmp)
 
     df = dfs[0].merge(dfs[1], on="date", how="outer").merge(dfs[2], on="date", how="outer").merge(dfs[3], on="date", how="outer").set_index("date")
@@ -242,6 +280,36 @@ def calculate_score(
     df["score"] = df.mean(axis=1).where(df.notna().all(axis=1))
 
     return df.reset_index()
+
+
+# def calculate_score(
+#     df_deep_fast_viz, 
+#     df_first_meal_viz, 
+#     df_last_meal_viz, 
+#     df_sleep_duration_viz,
+#     target_delta_fasting = 4,
+#     target_delta_first_meal = 1,
+#     target_delta_last_meal = 3,
+#     target_delta_sleep = 7,
+#     rolling_window_days = 7,
+# ):
+#     dfs = []
+
+#     for name, target, df in zip(
+#         ["fasting", "first_meal", "last_meal", "sleep"],
+#         [target_delta_fasting, target_delta_first_meal, target_delta_last_meal, target_delta_sleep],
+#         [df_deep_fast_viz, df_first_meal_viz, df_last_meal_viz, df_sleep_duration_viz]
+#     ):
+#         df_tmp = df[["date", "delta_in_hours"]].copy()
+#         df_tmp[f"score_{name}"] = (df_tmp.delta_in_hours > target).astype(int).rolling(rolling_window_days).mean()
+#         df_tmp = df_tmp.drop(columns=["delta_in_hours"])
+#         dfs.append(df_tmp)
+
+#     df = dfs[0].merge(dfs[1], on="date", how="outer").merge(dfs[2], on="date", how="outer").merge(dfs[3], on="date", how="outer").set_index("date")
+    
+#     df["score"] = df.mean(axis=1).where(df.notna().all(axis=1))
+
+#     return df.reset_index()
 
 
 # General Funcs
