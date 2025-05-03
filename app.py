@@ -30,25 +30,25 @@ GAMMA = 0.9
 # @st.cache_data
 def load_data():
     
-    import pickle
-    with open("dev_data.pkl", "rb") as f:
-        st.warning("Dev Data is used...")
-        ret = pickle.load(f)
+    # import pickle
+    # with open("dev_data.pkl", "rb") as f:
+    #     st.warning("Dev Data is used...")
+    #     ret = pickle.load(f)
     
-    ret["df_score"] = h.calculate_score(
-        ret["df_deep_fast_viz"], 
-        ret["df_first_meal_viz"], 
-        ret["df_last_meal_viz"], 
-        ret["df_sleep_duration_viz"],
-        target_delta_fasting = TARGET_DELTA_FASTING,
-        target_delta_first_meal = TARGET_DELTA_FIRST_MEAL,
-        target_delta_last_meal = TARGET_DELTA_LAST_MEAL,
-        target_delta_sleep = TARGET_DELTA_SLEEP,
-        rolling_window_days=ROLLING_WINDOW_DAYS,
-        gamma=GAMMA
-    )
+    # ret["df_score"] = h.calculate_score(
+    #     ret["df_deep_fast_viz"], 
+    #     ret["df_first_meal_viz"], 
+    #     ret["df_last_meal_viz"], 
+    #     ret["df_sleep_duration_viz"],
+    #     target_delta_fasting = TARGET_DELTA_FASTING,
+    #     target_delta_first_meal = TARGET_DELTA_FIRST_MEAL,
+    #     target_delta_last_meal = TARGET_DELTA_LAST_MEAL,
+    #     target_delta_sleep = TARGET_DELTA_SLEEP,
+    #     rolling_window_days=ROLLING_WINDOW_DAYS,
+    #     gamma=GAMMA
+    # )
     
-    return ret
+    # return ret
 
     # load sleep data
     df_sleep = h.load_sleep_data_from_supabase()
@@ -84,7 +84,8 @@ def load_data():
         target_delta_first_meal = TARGET_DELTA_FIRST_MEAL,
         target_delta_last_meal = TARGET_DELTA_LAST_MEAL,
         target_delta_sleep = TARGET_DELTA_SLEEP,
-        rolling_window_days=rolling_window_days
+        rolling_window_days=ROLLING_WINDOW_DAYS,
+        gamma=GAMMA
     )
 
     return {
