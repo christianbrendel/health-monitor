@@ -472,7 +472,6 @@ with c_individual_scores:
         with c[i]:
             st.metric(label=n, value=f"{v:.0%}", border=False)
 
-
 with c_figure:
     fig = visualize_data(**ret)
     config = {

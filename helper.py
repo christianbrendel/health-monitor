@@ -251,6 +251,7 @@ def calculate_score(
     
     def _scoring(x, gamma=1):
         weights = gamma ** np.arange(len(x))
+        weights = weights[::-1]
         return (x * weights).sum() / weights.sum()
     
     dfs = []
@@ -268,9 +269,13 @@ def calculate_score(
         
         # calculate the individual score for each day
         df_tmp[f"_score_{name}"] = ((df_tmp.delta_in_hours - min(target)) / (max(target) - min(target))).clip(0,1)
-        
+                
         # calculate the score based on last rolling_window_days taking the decay of gamma into account
         df_tmp[f"score_{name}"] = df_tmp[f"_score_{name}"].rolling(rolling_window_days).apply(lambda x: _scoring(x, gamma=gamma))
+        
+        import streamlit as st
+        with st.expander(f"Debug {name}"):
+            st.write(df_tmp)
           
         df_tmp = df_tmp.drop(columns=["delta_in_hours", f"_score_{name}"])
         dfs.append(df_tmp)
