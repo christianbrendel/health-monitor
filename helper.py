@@ -278,6 +278,12 @@ def calculate_score(
             row_height = 35
             height = int(row_height * (1.05 + rolling_window_days))
             df_debug = df_tmp.tail(rolling_window_days).sort_values(by="date", ascending=False).reset_index(drop=True)
+            df_debug = df_debug.style.background_gradient(
+                cmap='RdYlGn',
+                subset=[f'_score_{name}'],
+                vmin=0,
+                vmax=1
+            )
             st.dataframe(df_debug, height=height, row_height=row_height, hide_index=True)
           
         df_tmp = df_tmp.drop(columns=["delta_in_hours", f"_score_{name}"])
