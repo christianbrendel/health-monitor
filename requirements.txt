@@ -6,3 +6,5 @@ ipykernel
 python-dotenv
 supabase
 matplotlib
+openai
+Pillow
