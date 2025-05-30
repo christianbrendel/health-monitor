@@ -54,6 +54,12 @@ def create_message_content(text, image=None):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "show_camera" not in st.session_state:
+    st.session_state.show_camera = False
+
+if "submitted_with_image" not in st.session_state:
+    st.session_state.submitted_with_image = False
+
 # LAYOUT
 # ------
 
@@ -85,26 +91,48 @@ with container_chat_history:
 
 
 with container_chat_input:
-    prompt = st.chat_input("What is up?")
+    # Handle camera toggle
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        prompt = st.chat_input("What is up?")
+    
+    with col2:
+        if st.button("📷 Camera", help="Toggle camera on/off"):
+            st.session_state.show_camera = not st.session_state.show_camera
+            st.rerun()
 
 with container_image:
     image = None
-    with st.popover("Take a photo", use_container_width=True):
-        image = st.camera_input("Take a picture", label_visibility="collapsed")
-        if image:
-            image = Image.open(image)
-
+    if st.session_state.show_camera:
+        with st.container():
+            st.write("📸 Camera is active")
+            image = st.camera_input("Take a picture", label_visibility="collapsed")
+            if image:
+                image = Image.open(image)
+                st.image(image, caption="Preview", width=200)
+    
+    # Auto-turn off camera if we just submitted with an image
+    if st.session_state.submitted_with_image:
+        st.session_state.show_camera = False
+        st.session_state.submitted_with_image = False
+        st.rerun()
 
 # # Process input when either text or image is provided
 if prompt:
-        
+    # Check if we're submitting with an image
+    has_image = image is not None
+    
     # Create user message content
     user_content = create_message_content(prompt, image)
-    image = None
     
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": user_content})
     
+    # Set flag to turn off camera after this submission if we had an image
+    if has_image:
+        st.session_state.submitted_with_image = True
+
     # Display user message
     with st.chat_message("user"):
         if prompt:
@@ -114,18 +142,21 @@ if prompt:
 
     # Generate assistant response
     with st.chat_message("assistant"):
-        stream = get_openai_client().chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
                 {"role": m["role"], "content": m["content"]}
                 for m in st.session_state.messages
             ],
-            stream=True,
+            stream=False,
         )
-        response = st.write_stream(stream)
+        
+        # Get the text content from the response
+        assistant_message = response.choices[0].message.content
+        st.markdown(assistant_message)
     
     # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append({"role": "assistant", "content": assistant_message})
     
     
     
