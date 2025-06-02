@@ -17,3 +17,22 @@ Supabase interactions are mocked.
 
 This code can serve as a starting point for integrating the real Supabase SDK
 and later expanding the application with additional features.
+
+## Configuration
+
+Create an `Info.plist` file in the project root (next to `FoodLoggerApp.swift`) with the following contents:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>FoodLoggerApp</string>
+    <key>NSCameraUsageDescription</key>
+    <string>We need camera access so you can take photos of your meals.</string>
+</dict>
+</plist>
+```
+
+The `NSCameraUsageDescription` key is required for camera access on iOS. Without it, the app will crash when attempting to take a photo.
