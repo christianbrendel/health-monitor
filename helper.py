@@ -57,8 +57,12 @@ def load_eat_data_from_supabase(min_eat_duration_in_min=15):
     )
     response = supabase_client.table("foodlog").select("*").execute()
     df_eat = pd.DataFrame(response.data)
-    df_eat["ts_start"] = pd.to_datetime(df_eat["ts_start"])
-    df_eat["ts_end"] = pd.to_datetime(df_eat["ts_end"])
+    # df_eat["ts_start"] = pd.to_datetime(df_eat["ts_start"])
+    # df_eat["ts_end"] = pd.to_datetime(df_eat["ts_end"])
+    
+    df_eat["ts_start"] = pd.to_datetime(df_eat["ts_start"], format="ISO8601")
+    df_eat["ts_end"]   = pd.to_datetime(df_eat["ts_end"],   format="ISO8601")
+    
     eat_data = df_eat.to_dict("records")
 
     dt = timedelta(minutes=min_eat_duration_in_min)
